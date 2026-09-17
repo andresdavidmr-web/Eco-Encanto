@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eco-Encanto | RED en realidad aumentada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f1e7; --surface:#fffdf8; --surface-2:#efe6d6; --ink:#241c15; --ink-soft:#5c4f42;
+  --line:#ddd0ba; --accent:#9b3f1f; --accent-soft:#c96a3e; --green:#3f5f3a; --ok:#2f6b46; --bad:#9b2f2f;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15120f; --surface:#1e1a16; --surface-2:#2a231d; --ink:#f2ebe0; --ink-soft:#bfb3a3;
+    --line:#3a3128; --accent:#e08a5c; --accent-soft:#c96a3e; --green:#8fb489; --ok:#7fc79b; --bad:#e08080;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15120f; --surface:#1e1a16; --surface-2:#2a231d; --ink:#f2ebe0; --ink-soft:#bfb3a3;
+  --line:#3a3128; --accent:#e08a5c; --accent-soft:#c96a3e; --green:#8fb489; --ok:#7fc79b; --bad:#e08080;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Segoe UI",system-ui,sans-serif;line-height:1.55}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.15;margin:0 0 .4em}
+h1{font-size:clamp(1.6rem,5vw,2.4rem)}
+h2{font-size:clamp(1.25rem,4vw,1.7rem)}
+h3{font-size:1.05rem;font-family:Inter,sans-serif;font-weight:600}
+p{margin:0 0 .9em}
+img{max-width:100%}
+.wrap{max-width:860px;margin:0 auto;padding:0 18px 90px}
+header.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{max-width:860px;margin:0 auto;padding:10px 18px 6px;display:flex;align-items:center;gap:10px;font-weight:600}
+.brand .dot{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--accent-soft),var(--accent));flex:none}
+nav{max-width:860px;margin:0 auto;padding:0 12px 8px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none;border:1px solid transparent;background:transparent;color:var(--ink-soft);font:inherit;font-size:.82rem;padding:7px 11px;border-radius:999px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{background:var(--surface);border-color:var(--line);color:var(--ink);font-weight:600}
+section.screen{display:none;padding-top:22px;animation:fade .25s ease}
+section.screen.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.kicker{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:6px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin:14px 0}
+.muted{color:var(--ink-soft);font-size:.92rem}
+.btn{font:inherit;font-weight:600;font-size:.9rem;border-radius:10px;padding:10px 16px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* Visor AR */
+#stage{position:relative;width:100%;aspect-ratio:3/4;max-height:70vh;border-radius:14px;overflow:hidden;background:linear-gradient(160deg,#2b2620,#0f0d0b);border:1px solid var(--line);touch-action:none}
+@media(min-width:700px){#stage{aspect-ratio:16/10}}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+#gl{position:absolute;inset:0;width:100%;height:100%}
+#hint{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(15,13,11,.72);color:#f5efe6;font-size:.8rem;padding:8px 11px;border-radius:9px;backdrop-filter:blur(4px)}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{font:inherit;font-size:.8rem;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+input[type=range]{width:100%;accent-color:var(--accent)}
+/* Quiz */
+.q{margin:0 0 6px;font-weight:600}
+.opt{display:block;width:100%;text-align:left;font:inherit;font-size:.92rem;margin:6px 0;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.opt.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--surface))}
+.opt.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 14%,var(--surface))}
+.feedback{font-size:.88rem;color:var(--ink-soft);min-height:1.2em}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+table{width:100%;border-collapse:collapse;font-size:.88rem;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--surface-2)}
+#draw{width:100%;aspect-ratio:3/2;border-radius:12px;border:1px solid var(--line);background:#f0e4cd;touch-action:none;display:block}
+footer{border-top:1px solid var(--line);margin-top:30px;padding-top:14px;font-size:.82rem;color:var(--ink-soft)}
+.pill{display:inline-block;font-size:.72rem;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);margin:0 4px 4px 0}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="dot"></span> Eco-Encanto <span class="muted" style="font-weight:400;font-size:.8rem">· prototipo WebAR</span></div>
+  <nav id="nav" role="tablist">
+    <button role="tab" aria-selected="true" data-t="s1">1 · Portada</button>
+    <button role="tab" aria-selected="false" data-t="s2">2 · Contextualiza</button>
+    <button role="tab" aria-selected="false" data-t="s3">3 · Explora y aprende</button>
+    <button role="tab" aria-selected="false" data-t="s4">4 · Interactúa</button>
+    <button role="tab" aria-selected="false" data-t="s5">5 · Reflexiona y actúa</button>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<!-- ================= PANTALLA 1 ================= -->
+<section class="screen active" id="s1">
+  <div class="kicker">Pantalla 1 · Portada</div>
+  <h1>Eco-Encanto</h1>
+  <p class="muted">Arte rupestre amazónico en realidad aumentada · Chiribiquete, La Lindosa y Petroglifos El Encanto</p>
+  <div class="card" style="padding:0;overflow:hidden">
+    <canvas id="cover" style="display:block;width:100%;height:auto"></canvas>
+  </div>
+  <p><span class="pill">Educación patrimonial</span><span class="pill">Ecoalfabetización</span><span class="pill">Realidad aumentada</span><span class="pill">Grados 8.º y 9.º</span></p>
+  <p>Andrés David Montes Rivas y Fredy Alexander Castro Salcedo · Universidad de la Amazonia, Florencia, Caquetá.</p>
+  <div class="card">
+    <h3>Pregunta detonante</h3>
+    <p class="muted">Antes de empezar: ¿qué cree que representa esta figura y quién pudo haberla elaborado?</p>
+    <textarea id="ideaPrevia" rows="3" style="width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)" placeholder="Escriba su hipótesis..."></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" data-go="s2">Iniciar experiencia</button>
+      <span class="muted" id="savedNote"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PANTALLA 2 ================= -->
+<section class="screen" id="s2">
+  <div class="kicker">Pantalla 2 · Contextualiza</div>
+  <h2>Un libro de piedra en la Amazonia</h2>
+  <p>El arte rupestre es uno de los testimonios más antiguos de la relación entre las comunidades humanas y el territorio amazónico. En la Amazonia colombiana coexisten sitios de enorme reconocimiento internacional con otros que están a pocos minutos del casco urbano y casi nadie conoce. Esa diferencia no depende del valor patrimonial, sino de la visibilidad, el acceso y la protección de cada lugar.</p>
+  <div class="card">
+    <h3>Los tres sitios del recorrido</h3>
+    <div id="mapa" style="position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line)">
+      <canvas id="mapc" style="display:block;width:100%;height:auto"></canvas>
+    </div>
+    <div class="toolbar" id="siteBtns">
+      <button class="chip" data-site="0" aria-pressed="true">Chiribiquete</button>
+      <button class="chip" data-site="1" aria-pressed="false">La Lindosa</button>
+      <button class="chip" data-site="2" aria-pressed="false">El Encanto</button>
+    </div>
+    <div id="siteInfo" class="muted" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h3>Relacione cada sitio con su condición</h3>
+    <p class="muted" id="matchQ"></p>
+    <div id="matchOpts"></div>
+    <div class="feedback" id="matchFb"></div>
+  </div>
+  <button class="btn" data-go="s3">Continuar al visor AR</button>
+</section>
+
+<!-- ================= PANTALLA 3 ================= -->
+<section class="screen" id="s3">
+  <div class="kicker">Pantalla 3 · Explora y aprende</div>
+  <h2>Panel rupestre en realidad aumentada</h2>
+  <p class="muted">Active la cámara y el panel aparecerá sobre el espacio real del aula. Arrastre para girarlo, use el control para cambiar su tamaño y alterne las capas de visualización.</p>
+
+  <div id="stage">
+    <video id="cam" playsinline muted autoplay></video>
+    <canvas id="gl"></canvas>
+    <div id="hint">Toque “Activar cámara” para iniciar la experiencia aumentada. Si el dispositivo no lo permite, el panel se explora igual en modo 3D.</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn" id="camBtn">Activar cámara</button>
+    <button class="chip" data-layer="0" aria-pressed="true">Fotografía</button>
+    <button class="chip" data-layer="1" aria-pressed="false">Realce del pigmento</button>
+    <button class="chip" data-layer="2" aria-pressed="false">Calco vectorial</button>
+    <button class="chip" id="spin" aria-pressed="true">Giro automático</button>
+  </div>
+  <label class="muted" style="display:block;margin-top:12px">Escala del panel <input type="range" id="scale" min="40" max="220" value="100"></label>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Motivos</h3>
+      <p class="muted">Figuras humanas esquemáticas, manos en negativo, animales y trazos geométricos repetidos. Los conjuntos suelen organizarse en escenas y no como figuras aisladas.</p>
+    </div>
+    <div class="card">
+      <h3>Técnica</h3>
+      <p class="muted">Pictografías elaboradas con pigmento mineral de tonos ocres y rojizos sobre abrigos rocosos, y petroglifos obtenidos por percusión y abrasión de la superficie.</p>
+    </div>
+    <div class="card">
+      <h3>Conservación</h3>
+      <p class="muted">La documentación digital y tridimensional permite registrar el estado de los paneles y hacer seguimiento al deterioro sin intervenir físicamente la roca.</p>
+    </div>
+  </div>
+  <p class="muted">Contenidos fundamentados en la revisión de literatura del capítulo (Morcote-Ríos et al., 2021; Iriarte et al., 2022; Cabarcas Granados et al., 2023; Robinson et al., 2024).</p>
+  <button class="btn" data-go="s4">Ir al reto</button>
+</section>
+
+<!-- ================= PANTALLA 4 ================= -->
+<section class="screen" id="s4">
+  <div class="kicker">Pantalla 4 · Interactúa</div>
+  <h2>Reto: cuide el panel</h2>
+  <p class="muted">Cinco preguntas con retroalimentación inmediata.</p>
+  <div class="card" id="quizCard">
+    <div class="muted" id="qProgress"></div>
+    <p class="q" id="qText"></p>
+    <div id="qOpts"></div>
+    <div class="feedback" id="qFb"></div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" id="qNext" disabled>Siguiente</button></div>
+  </div>
+  <div class="card" id="scoreCard" style="display:none">
+    <h3 id="scoreTitle"></h3>
+    <p class="muted" id="scoreTxt"></p>
+    <div class="row"><button class="btn ghost" id="qAgain">Repetir</button><button class="btn" data-go="s5">Continuar</button></div>
+  </div>
+</section>
+
+<!-- ================= PANTALLA 5 ================= -->
+<section class="screen" id="s5">
+  <div class="kicker">Pantalla 5 · Reflexiona y actúa</div>
+  <h2>Su mensaje en la roca</h2>
+  <p>Dibuje un pictograma propio que exprese su compromiso con el cuidado del patrimonio amazónico. En la versión completa del RED, este dibujo queda anclado en realidad aumentada en un punto del colegio para que otros grupos lo encuentren.</p>
+  <canvas id="draw"></canvas>
+  <div class="toolbar">
+    <button class="chip" id="undo">Borrar todo</button>
+    <button class="chip" id="toPanel" aria-pressed="false">Ver mi pictograma en el panel AR</button>
+  </div>
+  <div class="card">
+    <h3>Compromiso ecoalfabetizador</h3>
+    <p class="muted">Complete: “Yo contribuyo al cuidado del patrimonio amazónico cuando…”</p>
+    <textarea id="compromiso" rows="3" style="width:100%;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)" placeholder="Escriba su compromiso..."></textarea>
+    <p class="muted" style="margin-top:10px">Su hipótesis inicial fue: <em id="ecoIdea">(sin registrar)</em>. ¿La cambiaría ahora que conoce el panel?</p>
+  </div>
+  <div class="card">
+    <h3>Reto de aula</h3>
+    <p class="muted">Proponga una acción concreta de divulgación o cuidado de los Petroglifos El Encanto que su curso pueda realizar este mes: una señalización, una campaña, una visita guiada para otro grado o una publicación en el muro colaborativo del RED.</p>
+  </div>
+  <footer>
+    <p><strong>Nota técnica.</strong> Prototipo construido con WebAR: se ejecuta en el navegador del teléfono, sin instalación, usando la cámara del dispositivo y geometría 3D generada en tiempo real. En la versión final los paneles se reemplazan por modelos obtenidos con fotogrametría y calcos digitales de los sitios reales, y el reconocimiento de superficie se implementa con marcadores impresos (AR.js) o WebXR en los dispositivos compatibles. El muro de Padlet se integra como repositorio y galería de evidencias.</p>
+    <p>Si la cámara no se activa, es porque el navegador exige abrir la página en una pestaña propia y otorgar el permiso. El recorrido funciona igualmente en modo 3D.</p>
+  </footer>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------------- navegación ---------------- */
+const nav=document.getElementById('nav');
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));
+  nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='s5'){document.getElementById('ecoIdea').textContent=document.getElementById('ideaPrevia').value.trim()||'(sin registrar)';}
+}
+nav.addEventListener('click',e=>{const b=e.target.closest('button');if(b)show(b.dataset.t);});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)show(b.dataset.go);});
+
+/* almacenamiento local, tolerante a fallos */
+const store={
+  get(k){try{return localStorage.getItem('eco:'+k)}catch(e){return null}},
+  set(k,v){try{localStorage.setItem('eco:'+k,v)}catch(e){}}
+};
+const idea=document.getElementById('ideaPrevia');
+idea.value=store.get('idea')||'';
+idea.addEventListener('input',()=>{store.set('idea',idea.value);document.getElementById('savedNote').textContent='Respuesta guardada en este dispositivo.';});
+const comp=document.getElementById('compromiso');
+comp.value=store.get('comp')||'';
+comp.addEventListener('input',()=>store.set('comp',comp.value));
+
+/* ---------------- texturas generadas ---------------- */
+function rockCanvas(w,h){
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,w,h);
+  g.addColorStop(0,'#b9a288');g.addColorStop(.45,'#9e846a');g.addColorStop(1,'#7d6450');
+  x.fillStyle=g;x.fillRect(0,0,w,h);
+  for(let i=0;i<2600;i++){
+    const r=Math.random()*26+3;
+    x.globalAlpha=Math.random()*0.16;
+    x.fillStyle=Math.random()>0.5?'#5c4636':'#d9c6ad';
+    x.beginPath();x.arc(Math.random()*w,Math.random()*h,r,0,7);x.fill();
+  }
+  x.globalAlpha=.25;x.strokeStyle='#4a382a';x.lineWidth=2;
+  for(let i=0;i<14;i++){
+    x.beginPath();let px=Math.random()*w,py=Math.random()*h;x.moveTo(px,py);
+    for(let j=0;j<8;j++){px+=(Math.random()-.5)*120;py+=(Math.random()-.4)*70;x.lineTo(px,py);}x.stroke();
+  }
+  x.globalAlpha=1;return c;
+}
+/* dibujo de los motivos (trazos propios, estilo esquemático) */
+function motifs(x,W,H,color,lw){
+  x.strokeStyle=color;x.fillStyle=color;x.lineWidth=lw;x.lineCap='round';x.lineJoin='round';
+  const person=(cx,cy,s)=>{
+    x.beginPath();x.arc(cx,cy-9*s,4.2*s,0,7);x.stroke();
+    x.beginPath();x.moveTo(cx,cy-5*s);x.lineTo(cx,cy+8*s);
+    x.moveTo(cx-7*s,cy-1*s);x.lineTo(cx+7*s,cy-1*s);
+    x.moveTo(cx,cy+8*s);x.lineTo(cx-6*s,cy+18*s);
+    x.moveTo(cx,cy+8*s);x.lineTo(cx+6*s,cy+18*s);x.stroke();
+  };
+  const deer=(cx,cy,s)=>{
+    x.beginPath();x.ellipse(cx,cy,16*s,7*s,0,0,7);x.stroke();
+    x.beginPath();x.moveTo(cx+14*s,cy-4*s);x.lineTo(cx+24*s,cy-14*s);x.lineTo(cx+22*s,cy-22*s);
+    x.moveTo(cx+24*s,cy-14*s);x.lineTo(cx+31*s,cy-19*s);x.stroke();
+    [-10,-3,4,11].forEach(o=>{x.beginPath();x.moveTo(cx+o*s,cy+6*s);x.lineTo(cx+o*s-2*s,cy+20*s);x.stroke();});
+  };
+  const hand=(cx,cy,s)=>{
+    x.beginPath();x.ellipse(cx,cy+6*s,8*s,10*s,0,0,7);x.fill();
+    for(let i=0;i<5;i++){const a=-Math.PI/2+(i-2)*0.42;
+      x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+Math.cos(a)*15*s,cy+Math.sin(a)*15*s);
+      x.lineWidth=lw*2.4;x.stroke();x.lineWidth=lw;}
+  };
+  const spiral=(cx,cy,s)=>{x.beginPath();for(let a=0;a<12;a+=.15){const r=a*1.7*s;x.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);}x.stroke();};
+  const grid=(cx,cy,s)=>{for(let i=0;i<4;i++){x.beginPath();x.moveTo(cx+i*9*s,cy);x.lineTo(cx+i*9*s,cy+26*s);x.stroke();
+    x.beginPath();x.moveTo(cx,cy+i*8*s);x.lineTo(cx+27*s,cy+i*8*s);x.stroke();}};
+  person(W*0.14,H*0.42,1.9); person(W*0.21,H*0.46,1.6); person(W*0.28,H*0.40,2.1);
+  deer(W*0.44,H*0.38,1.7); deer(W*0.62,H*0.62,1.3);
+  hand(W*0.78,H*0.34,1.9); hand(W*0.86,H*0.44,1.5);
+  spiral(W*0.36,H*0.72,1.3); grid(W*0.52,H*0.74,1.4);
+  person(W*0.70,H*0.74,1.7); person(W*0.75,H*0.76,1.4);
+}
+function layerTexture(mode,extra){
+  const W=1400,H=700;
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  if(mode===2){ x.fillStyle='#fbf7ef';x.fillRect(0,0,W,H); motifs(x,W,H,'#1a1512',3.4); }
+  else{
+    x.drawImage(rockCanvas(W,H),0,0);
+    if(mode===0){ x.globalAlpha=.62; motifs(x,W,H,'#8d3a24',5); x.globalAlpha=1; }
+    else{ x.globalAlpha=.25;x.fillStyle='#0d2233';x.fillRect(0,0,W,H);x.globalAlpha=1;
+          x.globalAlpha=.95; motifs(x,W,H,'#ff5a3c',5.4); x.globalAlpha=1; }
+  }
+  if(extra){ x.globalAlpha=.85; x.drawImage(extra,W*0.06,H*0.52,W*0.3,H*0.3); x.globalAlpha=1; }
+  const t=new THREE.CanvasTexture(c); t.anisotropy=4; return t;
+}
+
+/* ---------------- portada ---------------- */
+(function cover(){
+  const c=document.getElementById('cover'),W=1400,H=620;c.width=W;c.height=H;const x=c.getContext('2d');
+  x.drawImage(rockCanvas(W,H),0,0);
+  x.globalAlpha=.7;motifs(x,W,H,'#8d3a24',5);x.globalAlpha=1;
+  const g=x.createLinearGradient(0,H*0.45,0,H);g.addColorStop(0,'rgba(10,8,6,0)');g.addColorStop(1,'rgba(10,8,6,.8)');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.fillStyle='#f6ede0';x.font='700 74px Fraunces, Georgia, serif';x.fillText('Eco-Encanto',60,H-110);
+  x.font='500 34px Inter, sans-serif';x.fillStyle='#e6d6c2';
+  x.fillText('Arte rupestre amazónico en realidad aumentada',60,H-58);
+})();
+
+/* ---------------- mapa pantalla 2 ---------------- */
+const SITES=[
+  {n:'PNN Serranía de Chiribiquete',p:[0.26,0.36],d:'Reconocimiento internacional y enorme escala, pero acceso restringido por tratarse de un parque nacional y área de protección estricta. Los paneles se conocen sobre todo por registro aéreo y documentación científica.'},
+  {n:'Serranía de la Lindosa',p:[0.55,0.52],d:'Ampliamente documentada por la investigación arqueológica reciente, con centenares de figuras humanas, animales y escenas. Acceso posible pero costoso y dependiente de recorridos guiados.'},
+  {n:'Petroglifos El Encanto',p:[0.74,0.72],d:'Ubicados en área urbana de Florencia, Caquetá: son los más fáciles de visitar y, sin embargo, los menos conocidos y los más expuestos al deterioro y al vandalismo.'}
+];
+let siteSel=0;
+function drawMap(){
+  const c=document.getElementById('mapc'),W=1200,H=680;c.width=W;c.height=H;const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,'#274b31');g.addColorStop(1,'#16301f');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  x.globalAlpha=.25;
+  for(let i=0;i<420;i++){x.fillStyle=Math.random()>.5?'#3d6b45':'#1e4029';x.beginPath();
+    x.arc(Math.random()*W,Math.random()*H,Math.random()*26+8,0,7);x.fill();}
+  x.globalAlpha=1;
+  x.strokeStyle='#6aa9c9';x.lineWidth=7;x.globalAlpha=.8;
+  x.beginPath();x.moveTo(-20,H*.62);x.bezierCurveTo(W*.3,H*.5,W*.55,H*.78,W+20,H*.6);x.stroke();
+  x.beginPath();x.moveTo(W*.2,-20);x.bezierCurveTo(W*.32,H*.3,W*.28,H*.5,W*.46,H+20);x.lineWidth=4;x.stroke();
+  x.globalAlpha=1;
+  SITES.forEach((s,i)=>{
+    const px=s.p[0]*W,py=s.p[1]*H,on=i===siteSel;
+    x.beginPath();x.arc(px,py,on?26:17,0,7);x.fillStyle=on?'#e0704a':'rgba(240,220,200,.75)';x.fill();
+    x.lineWidth=4;x.strokeStyle='#120f0c';x.stroke();
+    x.fillStyle='#f4ece0';x.font=(on?'600 ':'400 ')+'27px Inter, sans-serif';
+    x.fillText(s.n,px+34,py+9);
+  });
+}
+function selSite(i){
+  siteSel=i;drawMap();
+  document.querySelectorAll('#siteBtns .chip').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.site===i));
+  document.getElementById('siteInfo').innerHTML='<strong>'+SITES[i].n+'.</strong> '+SITES[i].d;
+}
+document.getElementById('siteBtns').addEventListener('click',e=>{const b=e.target.closest('[data-site]');if(b)selSite(+b.dataset.site);});
+selSite(0);
+
+/* emparejamiento */
+const MATCH={q:'¿Cuál de los tres sitios es el más accesible físicamente y, a la vez, el menos reconocido?',
+  opts:['PNN Serranía de Chiribiquete','Serranía de la Lindosa','Petroglifos El Encanto'],ok:2,
+  fb:'Están dentro del casco urbano de Florencia: la cercanía no garantiza reconocimiento ni protección, y ahí está justamente el vacío que el RED busca atender.'};
+(function(){
+  const box=document.getElementById('matchOpts');document.getElementById('matchQ').textContent=MATCH.q;
+  MATCH.opts.forEach((o,i)=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=o;
+    b.onclick=()=>{
+      box.querySelectorAll('.opt').forEach(el=>el.disabled=true);
+      b.classList.add(i===MATCH.ok?'ok':'bad');
+      if(i!==MATCH.ok)box.children[MATCH.ok].classList.add('ok');
+      document.getElementById('matchFb').textContent=MATCH.fb;
+    };
+    box.appendChild(b);
+  });
+})();
+
+/* ---------------- visor WebAR ---------------- */
+const stage=document.getElementById('stage'),glc=document.getElementById('gl'),video=document.getElementById('cam');
+let renderer,scene,camera,panel,mats=[],autoSpin=true,userTex=null;
+function buildScene(){
+  renderer=new THREE.WebGLRenderer({canvas:glc,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(48,1,0.1,100);camera.position.set(0,0,5.2);
+  scene.add(new THREE.AmbientLight(0xffffff,.85));
+  const d=new THREE.DirectionalLight(0xfff0dd,.9);d.position.set(2,3,4);scene.add(d);
+  const geo=new THREE.PlaneGeometry(4,2,60,30);
+  const pos=geo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const X=pos.getX(i),Y=pos.getY(i);
+    pos.setZ(i,Math.sin(X*1.7)*0.09+Math.cos(Y*2.3+X)*0.07+(Math.random()-.5)*0.03);
+  }
+  geo.computeVertexNormals();
+  mats=[0,1,2].map(m=>new THREE.MeshStandardMaterial({map:layerTexture(m),roughness:.95,metalness:0,side:THREE.DoubleSide}));
+  panel=new THREE.Mesh(geo,mats[0]);
+  const edge=new THREE.Mesh(new THREE.BoxGeometry(4.12,2.12,.16),new THREE.MeshStandardMaterial({color:0x6a5540,roughness:1}));
+  edge.position.z=-0.12;panel.add(edge);
+  scene.add(panel);
+  resize();animate();
+}
+function resize(){
+  const r=stage.getBoundingClientRect();
+  renderer.setSize(r.width,r.height,false);
+  camera.aspect=r.width/r.height;camera.updateProjectionMatrix();
+}
+addEventListener('resize',()=>{if(renderer)resize();});
+function animate(){
+  requestAnimationFrame(animate);
+  if(autoSpin&&panel)panel.rotation.y+=0.0035;
+  renderer.render(scene,camera);
+}
+buildScene();
+
+/* gestos */
+let drag=false,lx=0,ly=0;
+stage.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;stage.setPointerCapture(e.pointerId);});
+stage.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  panel.rotation.y+=(e.clientX-lx)*0.008;
+  panel.rotation.x=Math.max(-1,Math.min(1,panel.rotation.x+(e.clientY-ly)*0.006));
+  lx=e.clientX;ly=e.clientY;
+});
+['pointerup','pointercancel','pointerleave'].forEach(ev=>stage.addEventListener(ev,()=>drag=false));
+document.getElementById('scale').addEventListener('input',e=>{const s=e.target.value/100;panel.scale.set(s,s,s);});
+document.getElementById('spin').addEventListener('click',e=>{autoSpin=!autoSpin;e.target.setAttribute('aria-pressed',autoSpin);});
+document.querySelectorAll('[data-layer]').forEach(b=>b.addEventListener('click',()=>{
+  const m=+b.dataset.layer;
+  document.querySelectorAll('[data-layer]').forEach(o=>o.setAttribute('aria-pressed',o===b));
+  panel.material=mats[m];
+  document.getElementById('hint').textContent=['Capa fotográfica: así se ve el panel a simple vista, con el pigmento desgastado.',
+    'Realce del pigmento: se acentúa el contraste cromático para distinguir trazos poco visibles.',
+    'Calco vectorial: el trazo se abstrae para analizar la composición de la escena.'][m];
+}));
+
+/* cámara */
+document.getElementById('camBtn').addEventListener('click',async function(){
+  const btn=this;
+  if(video.style.display==='block'){
+    (video.srcObject?.getTracks()||[]).forEach(t=>t.stop());
+    video.srcObject=null;video.style.display='none';btn.textContent='Activar cámara';
+    document.getElementById('hint').textContent='Modo 3D: el panel se explora sin cámara.';return;
+  }
+  btn.disabled=true;btn.textContent='Solicitando permiso...';
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+    video.srcObject=s;video.style.display='block';await video.play();
+    btn.textContent='Apagar cámara';
+    document.getElementById('hint').textContent='Mueva el teléfono: el panel permanece sobre el espacio real. Arrastre para girarlo.';
+  }catch(err){
+    document.getElementById('hint').textContent='No se pudo acceder a la cámara ('+(err.name||'error')+'). Abra la página en una pestaña del navegador del celular y conceda el permiso. El panel sigue disponible en modo 3D.';
+    btn.textContent='Activar cámara';
+  }
+  btn.disabled=false;
+});
+
+/* ---------------- quiz ---------------- */
+const QUIZ=[
+ {q:'¿Qué caracteriza principalmente a una pictografía frente a un petroglifo?',
+  o:['Se pinta sobre la roca con pigmentos','Se graba quitando material de la superficie','Se elabora con herramientas de metal'],ok:0,
+  f:'La pictografía se aplica con pigmento mineral; el petroglifo se obtiene retirando material por percusión o abrasión.'},
+ {q:'¿Por qué la documentación digital 3D es valiosa para la conservación?',
+  o:['Permite trasladar los paneles a un museo','Registra el estado del panel sin intervenir la roca','Reemplaza la necesidad de proteger el sitio'],ok:1,
+  f:'Registrar sin tocar permite comparar en el tiempo y detectar deterioro, pero no sustituye la protección del lugar.'},
+ {q:'Un grupo quiere resaltar unas figuras muy borrosas para fotografiarlas. ¿Qué haría usted?',
+  o:['Mojar la roca con agua para que resalte el color','Repasar el trazo con tiza','Usar realce digital del contraste sobre la fotografía'],ok:2,
+  f:'Mojar o repasar el trazo daña el panel de forma irreversible. El realce se hace sobre la imagen, nunca sobre la roca.'},
+ {q:'¿Qué hace que los Petroglifos El Encanto sean un caso pedagógicamente valioso?',
+  o:['Son los más antiguos de la Amazonia','Están cerca de la comunidad escolar y poco reconocidos','Solo pueden verse en realidad virtual'],ok:1,
+  f:'Su cercanía permite pasar de la experiencia aumentada a una acción real en el territorio.'},
+ {q:'La ecoalfabetización, en esta propuesta, apunta sobre todo a:',
+  o:['Memorizar la cronología de los sitios','Tomar decisiones informadas sobre el propio entorno','Aprender a manejar software 3D'],ok:1,
+  f:'El propósito final es que el reconocimiento del patrimonio se traduzca en decisiones responsables sobre el territorio.'}
+];
+let qi=0,score=0;
+function renderQ(){
+  const c=QUIZ[qi];
+  document.getElementById('qProgress').textContent='Pregunta '+(qi+1)+' de '+QUIZ.length;
+  document.getElementById('qText').textContent=c.q;
+  const box=document.getElementById('qOpts');box.innerHTML='';
+  document.getElementById('qFb').textContent='';document.getElementById('qNext').disabled=true;
+  c.o.forEach((o,i)=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=o;
+    b.onclick=()=>{
+      box.querySelectorAll('.opt').forEach(e=>e.disabled=true);
+      b.classList.add(i===c.ok?'ok':'bad');
+      if(i!==c.ok)box.children[c.ok].classList.add('ok');else score++;
+      document.getElementById('qFb').textContent=c.f;
+      document.getElementById('qNext').disabled=false;
+    };
+    box.appendChild(b);
+  });
+}
+document.getElementById('qNext').onclick=()=>{
+  qi++;
+  if(qi<QUIZ.length)renderQ();
+  else{
+    document.getElementById('quizCard').style.display='none';
+    document.getElementById('scoreCard').style.display='block';
+    document.getElementById('scoreTitle').textContent=score+' de '+QUIZ.length+' respuestas correctas';
+    document.getElementById('scoreTxt').textContent= score>=4
+      ? 'Buen manejo de los criterios de conservación. Lleve estas ideas a la última pantalla.'
+      : 'Vale la pena volver a la pantalla 3 y revisar las capas del panel antes de continuar.';
+  }
+};
+document.getElementById('qAgain').onclick=()=>{qi=0;score=0;
+  document.getElementById('scoreCard').style.display='none';
+  document.getElementById('quizCard').style.display='block';renderQ();};
+renderQ();
+
+/* ---------------- dibujo pantalla 5 ---------------- */
+const dc=document.getElementById('draw');
+function initDraw(){
+  const r=dc.getBoundingClientRect();
+  dc.width=r.width*2;dc.height=r.height*2;
+  const x=dc.getContext('2d');x.scale(2,2);
+  x.fillStyle='#efe2c9';x.fillRect(0,0,r.width,r.height);
+  x.strokeStyle='#8d3a24';x.lineWidth=5;x.lineCap='round';x.lineJoin='round';
+}
+let dw=false;
+function pt(e){const r=dc.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
+dc.addEventListener('pointerdown',e=>{dw=true;const x=dc.getContext('2d');const[a,b]=pt(e);x.beginPath();x.moveTo(a,b);dc.setPointerCapture(e.pointerId);});
+dc.addEventListener('pointermove',e=>{if(!dw)return;const x=dc.getContext('2d');const[a,b]=pt(e);x.lineTo(a,b);x.stroke();});
+['pointerup','pointercancel'].forEach(ev=>dc.addEventListener(ev,()=>dw=false));
+document.getElementById('undo').onclick=initDraw;
+document.getElementById('toPanel').onclick=function(){
+  const t=new THREE.CanvasTexture(dc);
+  mats.forEach((m,i)=>{m.map=layerTexture(i,dc);m.needsUpdate=true;});
+  this.setAttribute('aria-pressed','true');
+  show('s3');
+  document.getElementById('hint').textContent='Su pictograma quedó integrado al panel aumentado.';
+};
+addEventListener('load',initDraw);
+setTimeout(initDraw,60);
+</script>
+</body>
+</html>
